@@ -1,0 +1,11 @@
+Source/Temp
+Source/obj
+Source/Logs
+Source/Library
+Source/.idea
+Source/.vscode
+Source/ProjectSettings
+Source/UIElementsSchema
+*.unity
+*.meta
+*.info
