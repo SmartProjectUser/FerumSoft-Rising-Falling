@@ -15,22 +15,24 @@ namespace Project
 {
   public class ObstacleObject : BaseObject
   {
-    public int index;
+    public int respawnIndex;
+    public int typeIndex;
 
-    public ObstacleObject(int index)
+    public ObstacleObject(int respawnIndex, int typeIndex)
     {
-      this.index = index;
+      this.respawnIndex = respawnIndex;
+      this.typeIndex = typeIndex;
     }
 
     public void CreateObstacleObject()
     {
-      var objectPosition = GameController.inst.respawnObjectPlaces[index].gameObject.transform.position;
+      var objectPosition = GameController.inst.respawnObjectPlaces[respawnIndex].gameObject.transform.position;
 
       BaseObjectParams objectParams = new BaseObjectParams
       {
         path = Const.MODELS_PATH + "Obstacle_objects/",
-        file = "Obstacle_" + index,
-        name = "Obstacle_" + index,
+        file = "Obstacle_" + typeIndex,
+        name = "Obstacle_" + typeIndex,
         position = objectPosition,
         rotation = Quaternion.Euler(0f, 0f, 0f),
         scale = new Vector3(1f, 1f, 1f),

@@ -16,6 +16,16 @@ namespace Project
 
     public static List<BaseObject> obstacleList = new List<BaseObject>();
 
+    public static bool isPlaying = false;
+    public static GameObject musicObject;
+
+    public static string deadObstacleName = "Obstacle_5";
+
+    private static int obstacleTypesCount = 6;
+
+    public static float leftBorder = -4f;
+    public static float rightBorder = 4f;
+
     public static float moveSpeed = 6f;
     public static float fallingSpeed = 2f;
     public static float respawnTime = 1f;
@@ -24,6 +34,7 @@ namespace Project
     public bool moveRight = false;
 
     public static int scoresCount;
+    public static int lifesCount = 10;
 
     public static string startingPlaceName = "Falling_start";
     public static string backgroundObjectName = "Background";
@@ -57,28 +68,64 @@ namespace Project
 
     public void OnIntervalUpdate()
     {
-      GenerateObstacleObject();
-      CheckObjectAlive();
+      if (isPlaying)
+      {
+        GenerateObstacleObject();
+      }
     }
 
     public void OnStart()
     {
-      fallingObject = new FallingObject();
-      fallingObject.CreateFallingObject();
 
-      Audio.PlaySound(backgroundObject.gameObject, Const.SOUNDS_PATH + "8bit_sound", true);
+    }
+
+    public static void StartGame()
+    {
+      var gameWindow = GameUI.GetWindow<GameWindow>();
+      gameWindow.startButton.active = false;
+
+      isPlaying = true;
+
+      scoresCount = 0;
+      lifesCount = 10;
+      fallingSpeed = 2f;
+
+      GameController.inst.fallingObject = new FallingObject();
+      GameController.inst.fallingObject.CreateFallingObject();
+
+      musicObject = Audio.PlaySound(GameController.inst.backgroundObject.gameObject, Const.SOUNDS_PATH + "music", true);
+    }
+
+    public static void StopGame()
+    {
+      var gameWindow = GameUI.GetWindow<GameWindow>();
+      gameWindow.startButton.active = true;
+
+      RemoveAllObstacles();
+
+      GameObject.Destroy(musicObject);
+      GameController.inst.fallingObject.DestroyObject();
+
+      Audio.PlaySound(GameController.inst.backgroundObject.gameObject, Const.SOUNDS_PATH + "game_over");
+
+      isPlaying = false;
     }
 
     public void OnUpdate()
     {
-      if (fallingObject.gameObject.transform.position.x > -5.5f && moveLeft)
+      if (isPlaying)
       {
-        fallingObject.gameObject.transform.position += Vector3.left * Time.deltaTime * moveSpeed;
-      }
+        if (fallingObject.gameObject.transform.position.x > GameController.leftBorder && moveLeft)
+        {
+          fallingObject.gameObject.transform.position += Vector3.left * Time.deltaTime * moveSpeed;
+        }
 
-      if (fallingObject.gameObject.transform.position.x < 5.5f && moveRight)
-      {
-        fallingObject.gameObject.transform.position += Vector3.right * Time.deltaTime * moveSpeed;
+        if (fallingObject.gameObject.transform.position.x < GameController.rightBorder && moveRight)
+        {
+          fallingObject.gameObject.transform.position += Vector3.right * Time.deltaTime * moveSpeed;
+        }
+
+        CheckObjectAlive();
       }
     }
 
@@ -119,41 +166,47 @@ namespace Project
     public void GenerateObstacleObject()
     {
       var obstacleRespawnIndex = UnityEngine.Random.Range(0, respawnObjectPlaces.Length);
+      var obstacleTypeIndex = UnityEngine.Random.Range(0, obstacleTypesCount);
 
-      var obstacleObject = new ObstacleObject(obstacleRespawnIndex);
+      var obstacleObject = new ObstacleObject(obstacleRespawnIndex, obstacleTypeIndex);
       obstacleObject.CreateObstacleObject();
 
       obstacleList.Add(obstacleObject);
     }
 
-    public void CheckObjectAlive()
+    private void CheckObjectAlive()
     {
       for (int i = 0; i < obstacleList.Count; i++)
       {
         var obstacle = obstacleList[i];
 
-        var distance = Vector3.Distance(
-          fallingObjectPlace.gameObject.transform.position,
-          obstacle.gameObject.transform.position
-        );
-
-        if (distance > 25f)
+        if (
+          obstacle.gameObject.transform.position.y - fallingObjectPlace.gameObject.transform.position.y > 5 &&
+          obstacle.gameObject.name != deadObstacleName
+        )
         {
           obstacleList.Remove(obstacle);
           obstacle.DestroyObject();
+
+          lifesCount--;
+
+          if (lifesCount == 0)
+          {
+            StopGame();
+          }
 
           break;
         }
       }
     }
 
-    public void StopMoving()
+    private void StopMoving()
     {
       moveLeft = false;
       moveRight = false;
     }
 
-    public void RunMoveTimer()
+    private void RunMoveTimer()
     {
       moveRoutine = new CoroutineObject(gameComponent, OnMove);
       moveRoutine.Start();
@@ -199,22 +252,58 @@ namespace Project
 
       if(facedObstacle != null)
       {
-        obstacleList.Remove(facedObstacle);
-        facedObstacle.DestroyObject();
+        if (collision.gameObject.name != deadObstacleName)
+        {
+          ShowShirParticles(facedObstacle.gameObject.transform.position);
 
-        UpdateScores();
+          obstacleList.Remove(facedObstacle);
+          facedObstacle.DestroyObject();
 
-        Audio.PlaySound(GameController.inst.fallingObject.gameObject, Const.SOUNDS_PATH + "explosion");
+          UpdateScores();
+
+          Audio.PlaySound(GameController.inst.fallingObject.gameObject, Const.SOUNDS_PATH + "collision");
+        }
+        else
+        {
+          StopGame();
+        }
       }
     }
 
-    public static void UpdateScores()
+    public static void ShowShirParticles(Vector3 position)
+    {
+      BaseObjectParams objectParams = new BaseObjectParams
+      {
+        path = Const.PARTICLES_PATH,
+        file = "Shit_particles",
+        name = "Shit_particles",
+        position = new Vector3(position.x, position.y, 0),
+        scale = new Vector3(1f, 1f, 1f),
+        component = typeof(ShitObjectComponent)
+      };
+
+      var particleObject = new BaseObject();
+      particleObject.CreateObject(objectParams);
+    }
+
+    private static void UpdateScores()
     {
       scoresCount++;
 
       if (scoresCount % 5 == 0)
       {
         fallingSpeed++;
+      }
+    }
+
+    private static void RemoveAllObstacles()
+    {
+      while (obstacleList.Count > 0)
+      {
+        var obstacle = obstacleList[0];
+
+        obstacleList.Remove(obstacle);
+        obstacle.DestroyObject();
       }
     }
   }

@@ -61,7 +61,6 @@ namespace Bazer
 
     private void OnDragEnd(PointerEventData eventData)
     {
-      Debug.Log("HELLO");
       onDragEnd.Invoke(eventData);
     }
 
