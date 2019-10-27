@@ -28,7 +28,6 @@ namespace Project
 
     public static float moveSpeed = 6f;
     public static float fallingSpeed = 2f;
-    public static float respawnTime = 1f;
 
     public bool moveLeft = false;
     public bool moveRight = false;
@@ -293,6 +292,11 @@ namespace Project
       if (scoresCount % 5 == 0)
       {
         fallingSpeed++;
+      }
+
+      if (scoresCount % 10 == 0)
+      {
+        moveSpeed++;
       }
     }
 
